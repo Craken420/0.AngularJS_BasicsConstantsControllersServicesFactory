@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html >
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.8.2/angular.js"></script>
+<body ng-app="app">
+    <script>
+        var my = angular.module('app', []);
+    </script>
+
+    <!--
+        Constant: almacena valores simples de cualquier tipo que no deben cambiar,
+            NO podemos inyectar dependencias (DI) en su definición,
+            y tampoco es configurable, pero SI puede inyectarse en funciones de configuración.
+    -->
+    <div ng-controller="myCtrl">
+        Server constant: {{server}}
+    </div><br/>
+    <script>
+        my.constant('SERVERS', { DEVELOPMENT: "http://localhost:8080/app",
+            PRODUCTION:"http://myDomain.com/app"});
+
+        my.config(['SERVERS', function(SERVERS) {
+            console.log(SERVERS.PRODUCTION);
+        }]);
+
+        my.controller('myCtrl', ['$scope', 'SERVERS', function($scope, SERVERS) {
+            $scope.server = SERVERS.PRODUCTION;
+        }]);
+    </script>
+
+    <!-- Example: 2 -->
+    <div ng-controller="myCtrl2">
+        Service constant: {{valor}}
+    </div><br/>
+    <script>
+        my.constant('myServiceConst','Hola mundo');
+
+        my.controller('myCtrl2', ['$scope', 'myServiceConst', function($scope, myServiceConst) {
+            $scope.valor = myServiceConst;
+        }]);
+    </script>
+
+    <!-- Example: 3 -->
+    <div ng-controller="myCtrl3">
+        idioma: {{idioma}}<br/>
+        suma 1 + 5: {{suma}}<br/>
+        resta 5 - 5: {{resta}}<br/>
+        radio: {{radio}}<br/>
+        area(radio): {{area}}<br/>
+    </div><br/>
+    <script>
+        my.constant('idioma', 'es-es');
+
+        my.constant('matematicas_simples', {
+        sumar: (a,b) => a + b,
+        restar: (a,b) => a - b
+        });
+
+        my.constant('radio',10);
+
+        my.constant('area', (radio) => 3.1416 * radio * radio);
+
+        my.controller('myCtrl3', ['$scope', 'idioma', 'matematicas_simples', 'radio', 'area',
+            ($scope, idioma, matematicas_simples, radio, area) => {
+                $scope.idioma = idioma;
+                $scope.suma = matematicas_simples.sumar(1, 5);
+                $scope.resta = matematicas_simples.restar(5, 5);
+                $scope.radio = radio;
+                $scope.area = area(radio);
+            }]);
+    </script>
+
+    <!--
+        Value: permite definir objetos simples y primitivas que se pueden inyectar
+            únicamente durante la fase de ejecución.
+            NO podemos inyectar dependencias (DI) en su definición ni es configurable.
+    -->
+    <div ng-controller="myCtrl4">
+        User: {{user}}<br/>
+    </div><br/>
+    <script>
+        my.value('randomize', () => Math.floor(Math.random() * 1000) );
+        my.value('User', {'id': 'SomeID'} );
+        my.value('token','a1234567890');
+
+        my.run(['randomize', 'User', (randomize, User) => {
+            var num = randomize();
+            User.id = num;
+            console.log(User);
+        }]);
+
+        my.controller('myCtrl4', ['$scope', 'User', function($scope, User) {
+            $scope.user = User;
+        }]);
+    </script>
+
+    <!--
+        Service: función constructor que define el servicio.
+        Este servicio se puede inyectar únicamente durante la fase de ejecución (run).
+        No obstante, SI podemos inyectar dependencias (DI) en su definición, aunque no es configurable.
+        Internamente, Angular utiliza el método new sobre este constructor a la hora de instanciar
+        el servicio, por lo que podemos añadirle propiedades con this.
+        Ese objeto this es exactamente lo que nos devuelve el servicio.
+    -->
+    <div ng-controller="myCtrl5">
+        Token: {{token}}<br/>
+    </div><br/>
+    <script>
+        my.service('AuthBearer', ['token', function (token) {
+            this.authValue = "bearer " + token;
+        }]);
+
+        my.run(['AuthBearer', (AuthBearer) => console.log(AuthBearer.authValue)])
+
+        my.controller('myCtrl5', ['$scope', 'AuthBearer', function($scope, AuthBearer){
+            $scope.token = AuthBearer.authValue;
+        }]);
+    </script>
+
+    <!--
+        Factory: caso genérico de service, más enfocado a la inicialización del servicio
+            dado que no devuelve el constructor sino el objeto en sí mismo.
+            Como en el servicio, se puede inyectar únicamente durante la fase de ejecución,
+            y SI podemos inyectar dependencias (DI) en su definición, aunque no es configurable.
+    -->
+    <div ng-controller="myCtrl6">
+        apiToken_apiToken: {{apiToken_apiToken}}<br/>
+        apiToken_client: {{apiToken_client}}<br/>
+        apiToken_secret: {{apiToken_secret}}<br/>
+    </div><br/>
+    <script>
+        my.value('clientID', '123');
+        my.value('secretGlobal', '456');
+
+        my.factory('apiToken', ['$window', 'clientID', 'secretGlobal',
+            function apiTokenFactory($window, clientID, secretGlobal) {
+                $window.localStorage.setItem('secret', secretGlobal);
+                var encrypt = (data1, data2) => (data1 + ':' + data2).toUpperCase();
+                var secret = $window.localStorage.getItem('secret');
+                var apiToken = encrypt(clientID, secret);
+
+                return {'apiToken': apiToken, 'secret': secret, 'client': clientID};
+            }]);
+
+        // Se inyecta como un servicio
+        my.run(['apiToken', function(apiToken){
+            console.log(apiToken.apiToken);
+        }])
+
+        my.controller('myCtrl6', ['apiToken', '$scope',
+            (apiToken, $scope) => {
+                $scope.apiToken_apiToken = apiToken.apiToken;
+                $scope.apiToken_client = apiToken.client;
+                $scope.apiToken_secret = apiToken.secret;
+            }
+        ]);
+    </script>
+
+    <!--
+        Provider: caso más genérico de servicio, que además de generar un servicio
+            inyectable durante la fase de ejecución e inyectar dependencias (DI) en su definición,
+            proporciona una API para la configuración del servicio
+            antes de que se inicie la aplicación.
+    -->
+    <script>
+        my.provider('logger', function() {
+            var logToConsole = false;
+
+            // Métodos de this conforman la API de configuración
+            this.enableConsole = flag => logToConsole = flag;
+
+            // método this.$get equivale a una factoría
+            this.$get = function () {
+                return {
+                    debug: function (msg) {
+                        if (logToConsole)
+                            console.log(msg)
+                    }
+                }
+            };
+        });
+
+        my.config(['loggerProvider', function (loggerProvider) {
+            loggerProvider.enableConsole(true);
+        }]);
+
+        my.run(['logger', function(logger) {
+            logger.debug('Hello world');
+        }]);
+    </script>
+</body>
+</html>

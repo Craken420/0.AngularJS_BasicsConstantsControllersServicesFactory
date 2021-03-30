@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Example - example-heroComponentSimple-production</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.8.2/angular.js"></script>
+  <script src="index.js"></script>
+  <script src="Component-HeroDetails.js"></script>
+</head>
+<body ng-app="heroApp">
+  <!-- components match only elements -->
+<div ng-controller="MainCtrl as ctrl">
+  <b>Hero</b><br>
+  Name: {{ctrl.hero}}<br><br>
+  <hero-detail hero="ctrl.hero"></hero-detail>
+</div>
+</body>
+</html>
