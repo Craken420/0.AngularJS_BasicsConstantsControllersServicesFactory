@@ -7,8 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["angularjs", "nodejs"],
+  "author": "Lui Angel Peña Zuñiga",
   "license": "ISC",
   "dependencies": {
     "express": "^4.17.1",
